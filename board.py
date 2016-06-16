@@ -7,15 +7,16 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtGui import QPainter
 from PyQt5.QtWidgets import QFrame
 from tetrominoe import Tetrominoe
+from shape import Shape
 
 
 class Board(QFrame):
 
-    msdg2Statusbar = pyqtSignal(str)
+    msg2Statusbar = pyqtSignal(str)
 
     BoardWidth = 10
     BoardHeight = 22
-    Speed = 300
+    Speed = 200
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -31,7 +32,7 @@ class Board(QFrame):
         self.numLinesRemoved = 0
         self.board = []
 
-        self.setFoculsPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.isStarted = False
         self.isPaused = False
         self.clearBoard()
@@ -43,12 +44,13 @@ class Board(QFrame):
         self.board[(y * Board.BoardWidth) + x] = shape
 
     def squareWidth(self):
-        return self.cententsRect().width() // Board.BoardWidth
+        return self.contentsRect().width() // Board.BoardWidth
 
     def squareHeight(self):
-        return self.contetsRect().height() // Board.BoardHeight
+        return self.contentsRect().height() // Board.BoardHeight
 
     def start(self):
+
         if self.isPaused:
             return
 
@@ -57,7 +59,7 @@ class Board(QFrame):
         self.numLinesRemoved = 0
         self.clearBoard()
 
-        self.msdg2Statusbar.emit(str(self.numLinesRemoved))
+        self.msg2Statusbar.emit(str(self.numLinesRemoved))
 
         self.newPiece()
         self.timer.start(Board.Speed, self)
@@ -66,22 +68,23 @@ class Board(QFrame):
 
         if not self.isStarted:
             return
+
         self.isPaused = not self.isPaused
 
         if self.isPaused:
             self.timer.stop()
-            self.msdg2Statusbar.emit("pause")
+            self.msg2Statusbar.emit("paused")
 
         else:
             self.timer.start(Board.Speed, self)
-            self.msdg2Statusbar.emit(str(self.numLinesRemoved))
+            self.msg2Statusbar.emit(str(self.numLinesRemoved))
 
         self.update()
 
     def paintEvent(self, event):
 
         painter = QPainter(self)
-        rect = self.cententsRect()
+        rect = self.contentsRect()
         boardTop = rect.bottom() - Board.BoardHeight * self.squareHeight()
 
         for i in range(Board.BoardHeight):
@@ -91,14 +94,14 @@ class Board(QFrame):
                 if shape != Tetrominoe.NoShape:
                     self.drawSquare(painter,
                                     rect.left() + j * self.squareWidth(),
-                                    boardTop + i * self.squareHeight, shape)
+                                    boardTop + i * self.squareHeight(), shape)
 
         if self.curPiece.shape() != Tetrominoe.NoShape:
 
             for i in range(4):
 
                 x = self.curX + self.curPiece.x(i)
-                y = self.curY + self.curPiece.y(i)
+                y = self.curY - self.curPiece.y(i)
                 self.drawSquare(painter, rect.left() + x * self.squareWidth(),
                                 boardTop + (Board.BoardHeight - y - 1) *
                                 self.squareHeight(),
@@ -142,11 +145,11 @@ class Board(QFrame):
 
     def timerEvent(self, event):
 
-        if event.timerID() == self.timer.timerID():
+        if event.timerId() == self.timer.timerId():
 
             if self.isWaitingAfterLine:
                 self.isWaitingAfterLine = False
-                self.newPiect()
+                self.newPiece()
             else:
                 self.oneLineDown()
 
@@ -187,3 +190,94 @@ class Board(QFrame):
 
         if not self.isWaitingAfterLine:
             self.newPiece()
+
+    def removeFullLines(self):
+
+        numFullLines = 0
+        rowsToRemove = []
+
+        for i in range(Board.BoardHeight):
+
+            n = 0
+            for j in range(Board.BoardWidth):
+                if not self.shapeAt(j, i) == Tetrominoe.NoShape:
+                    n = n + 1
+
+            if n == 10:
+                rowsToRemove.append(i)
+
+        rowsToRemove.reverse()
+
+        for m in rowsToRemove:
+
+            for k in range(m, Board.BoardHeight):
+                for l in range(Board.BoardWidth):
+                    self.setShapeAt(l, k, self.shapeAt(l, k + 1))
+
+        numFullLines = numFullLines + len(rowsToRemove)
+
+        if numFullLines > 0:
+
+            self.numLinesRemoved = self.numLinesRemoved + numFullLines
+            self.msg2Statusbar.emit(str(self.numLinesRemoved))
+
+            self.isWaitingAfterLine = True
+            self.curPiece.setShape(Tetrominoe.NoShape)
+            self.update()
+
+    def newPiece(self):
+
+        self.curPiece = Shape()
+        self.curPiece.setRandomShape()
+        self.curX = Board.BoardWidth // 2 + 1
+        self.curY = Board.BoardHeight - 1 + self.curPiece.minY()
+
+        if not self.tryMove(self.curPiece, self.curX, self.curY):
+
+            self.curPiece.setShape(Tetrominoe.NoShape)
+            self.timer.stop()
+            self.isStarted = False
+            self.msg2Statusbar.emit("Game Over")
+
+    def tryMove(self, newPiece, newX, newY):
+
+        for i in range(4):
+
+            x = newX + newPiece.x(i)
+            y = newY - newPiece.y(i)
+
+            if x < 0 or x >= Board.BoardWidth or y < 0 or \
+                    y >= Board.BoardHeight:
+                return False
+
+            if self.shapeAt(x, y) != Tetrominoe.NoShape:
+                return False
+
+            self.curPiece = newPiece
+            self.curX = newX
+            self.curY = newY
+            self.update()
+
+            return True
+
+    def drawSquare(self, painter, x, y, shape):
+
+        colorTable = [0x000000, 0xCC6666, 0x66CC66, 0x6666CC,
+                      0xCCCC66, 0xCC66CC, 0x66CCCC, 0xDAAA00]
+
+        color = QColor(colorTable[shape])
+        painter.fillRect(x + 1, y + 1, self.squareWidth() - 2,
+                         self.squareHeight() - 2, color)
+
+        painter.setPen(color.lighter())
+        painter.drawLine(x, y + self.squareHeight() - 1, x, y)
+        painter.drawLine(x, y, x + self.squareWidth() - 1, y)
+        painter.setPen(color.darker())
+
+        painter.drawLine(x + 1, y + self.squareHeight() - 1,
+                         x + self.squareWidth() - 1,
+                         y + self.squareHeight() - 1)
+
+        painter.drawLine(x + self.squareWidth() - 1,
+                         y + self.squareHeight() - 1,
+                         x + self.squareWidth() - 1, y + 1)
