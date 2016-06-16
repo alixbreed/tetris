@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import QFrame
 from tetrominoe import Tetrominoe
 
 
-
 class Board(QFrame):
 
     msdg2Statusbar = pyqtSignal(str)
@@ -91,8 +90,8 @@ class Board(QFrame):
 
                 if shape != Tetrominoe.NoShape:
                     self.drawSquare(painter,
-                        rect.left() + j * self.squareWidth(),
-                        boardTop + i * self.squareHeight, shape)
+                                    rect.left() + j * self.squareWidth(),
+                                    boardTop + i * self.squareHeight, shape)
 
         if self.curPiece.shape() != Tetrominoe.NoShape:
 
@@ -101,9 +100,9 @@ class Board(QFrame):
                 x = self.curX + self.curPiece.x(i)
                 y = self.curY + self.curPiece.y(i)
                 self.drawSquare(painter, rect.left() + x * self.squareWidth(),
-                    boardTop + (Board.BoardHeight - y - 1) *
-                    self.squareHeight(),
-                    self.curPiece.shape())
+                                boardTop + (Board.BoardHeight - y - 1) *
+                                self.squareHeight(),
+                                self.curPiece.shape())
 
     def keyPressEvent(self, event):
 
