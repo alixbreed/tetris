@@ -16,10 +16,11 @@ class Board(QFrame):
 
     BoardWidth = 10
     BoardHeight = 22
-    Speed = 200
+    Speed = 400
 
     def __init__(self, parent):
         super().__init__(parent)
+        
         self.initBoard()
 
     def initBoard(self):
@@ -85,6 +86,7 @@ class Board(QFrame):
 
         painter = QPainter(self)
         rect = self.contentsRect()
+
         boardTop = rect.bottom() - Board.BoardHeight * self.squareHeight()
 
         for i in range(Board.BoardHeight):
@@ -253,12 +255,12 @@ class Board(QFrame):
             if self.shapeAt(x, y) != Tetrominoe.NoShape:
                 return False
 
-            self.curPiece = newPiece
-            self.curX = newX
-            self.curY = newY
-            self.update()
+        self.curPiece = newPiece
+        self.curX = newX
+        self.curY = newY
+        self.update()
 
-            return True
+        return True
 
     def drawSquare(self, painter, x, y, shape):
 
